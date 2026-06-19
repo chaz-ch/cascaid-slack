@@ -51,10 +51,11 @@ class PinStateStorage(Protocol):
         ...
 
     def delete_pin(self, pin_key: str) -> None:
-        """Drop the row for ``pin_key``. Used by the self-heal path when Slack returns
+        """Drop the row for ``pin_key``.
 
-        message_not_found / channel_not_found from chat.update -- we forget the
-        stale ts and fall back to a fresh post on the next call.
+        Used by the self-heal path when Slack returns message_not_found /
+        channel_not_found from chat.update -- we forget the stale ts and
+        fall back to a fresh post on the next call.
         """
         ...
 

@@ -16,7 +16,7 @@
 
 [project]
 name = "cascaid-slack"
-version = "0.1.0"
+version = "0.2.0"
 description = "Cascaid's shared Slack notification patterns: rolling pins, event logs, bulk cleanup."
 readme = "README.md"
 requires-python = ">=3.12"

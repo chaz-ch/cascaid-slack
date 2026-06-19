@@ -49,7 +49,8 @@ class _JsonFileBackend:
         if not self._path.exists():
             return {}
         with self._path.open("r", encoding="utf-8") as f:
-            return json.load(f)
+            data: dict[str, dict[str, Any]] = json.load(f)
+            return data
 
     def write(self, data: dict[str, dict[str, Any]]) -> None:
         """Atomically replace the file with ``data`` serialised as JSON."""

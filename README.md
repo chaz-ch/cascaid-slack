@@ -18,8 +18,9 @@ patterns we kept reinventing:
 
 ## Status
 
-**v0.1 — extraction in progress.** API may change as we migrate the two consumer
-projects. Once both are pinned to v1.0.0 we'll keep semver compatibility.
+**v0.2.0** -- pins + events + cleanup tooling all shipped. API may still change
+as we migrate the two consumer projects. Once both are pinned to v1.0.0 we'll
+keep semver compatibility.
 
 ## Install
 
@@ -62,6 +63,32 @@ upsert_pinned_message(
 event_storage = JsonFileEventLogStorage("./events_state.json")
 send_slack_event(notifier, event_storage, text="Job completed: 71 navigator tasks")
 # -> Posts "*--- Tuesday, June 16, 2026 ---*" once per day, then your event under it
+
+# Bulk cleanup -- delete pre-migration flood while protecting pinned messages
+from cascaid_slack.cleanup import (
+    CleanupRules, run_cleanup, write_audit_csv, build_delete_client,
+)
+from slack_sdk import WebClient
+import os, re
+
+rules = CleanupRules(
+    autobot_user_id="U-MY-BOT",
+    redundant_patterns={
+        "old_stats": re.compile(r"Pending Navigator Tasks", re.I),
+    },
+)
+result = run_cleanup(
+    read_client=WebClient(token=os.environ["SLACK_BOT_TOKEN"]),
+    delete_client=build_delete_client(
+        os.environ.get("SLACK_USER_TOKEN") or os.environ["SLACK_BOT_TOKEN"]
+    ),
+    channel=os.environ["SLACK_CHANNEL_ID"],
+    rules=rules,
+    db_pinned_ts=load_my_pinned_ts(),   # set[str], from wherever you keep it
+    execute=False,                       # dry-run; set True to actually delete
+)
+write_audit_csv(result.verdicts, "cleanup_preview.csv")
+print(result.action_summary)  # Counter({'KEEP_HUMAN': 12, 'DELETE': 5043, ...})
 ```
 
 ## Storage protocols

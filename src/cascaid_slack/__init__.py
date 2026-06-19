@@ -45,4 +45,4 @@ __all__ = [
     "upsert_pinned_message",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
