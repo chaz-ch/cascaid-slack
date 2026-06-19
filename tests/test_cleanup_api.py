@@ -23,6 +23,29 @@ def _slack_error(code: str) -> SlackApiError:
     return SlackApiError(message=code, response={"ok": False, "error": code})
 
 
+class _FakeSlackResponse:
+    """Mimic the iteration semantics of slack_sdk.web.SlackResponse.
+
+    The real SlackResponse iterates over response *keys* (length-1 strings),
+    NOT (k, v) tuples. That broke ``dict(client.auth_test())`` in production
+    even though tests using ``return_value = {plain dict}`` happily passed.
+    Use this fake whenever you mock a method that returns a SlackResponse.
+    """
+
+    def __init__(self, payload: dict) -> None:
+        self.data = dict(payload)
+
+    def __iter__(self):
+        # SlackResponse iterates over keys, like a dict does by default.
+        return iter(self.data)
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    def get(self, key, default=None):
+        return self.data.get(key, default)
+
+
 @pytest.fixture
 def client():
     """Fresh MagicMock WebClient. Override per test."""
@@ -115,18 +138,30 @@ class TestWhoami:
     """auth.test wrapping."""
 
     def test_returns_auth_test_dict(self, client):
-        """Happy path: forward the auth.test response as a plain dict."""
-        client.auth_test.return_value = {
-            "ok": True,
-            "user": "autochart-bot",
-            "user_id": "U-AUTO",
-            "bot_id": "B-AUTO",
-        }
+        """Happy path: forward the auth.test response as a plain dict.
+
+        Uses _FakeSlackResponse to mimic real SlackResponse iteration
+        semantics (iterates over keys, not k/v tuples). The previous
+        version of this test used a plain dict as return_value, which
+        hid a production bug where ``dict(client.auth_test())`` raised
+        ``ValueError: dictionary update sequence element #0 has length
+        1; 2 is required`` -- because the real SlackResponse iterates
+        over strings.
+        """
+        client.auth_test.return_value = _FakeSlackResponse(
+            {
+                "ok": True,
+                "user": "autochart-bot",
+                "user_id": "U-AUTO",
+                "bot_id": "B-AUTO",
+            }
+        )
 
         out = whoami(client)
 
         assert out["user_id"] == "U-AUTO"
         assert out["bot_id"] == "B-AUTO"
+        assert out["ok"] is True
 
     def test_auth_test_failure_raises_runtime_error(self, client):
         """Slack-side failure -> RuntimeError so callers can fail loudly at startup."""

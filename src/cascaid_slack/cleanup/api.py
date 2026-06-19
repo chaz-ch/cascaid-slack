@@ -103,7 +103,12 @@ def whoami(client: WebClient) -> dict:
     and ``bot_id`` (None for user tokens).
     """
     try:
-        return dict(client.auth_test())
+        # ``client.auth_test()`` returns a SlackResponse, which iterates over
+        # response *keys* rather than (k, v) tuples -- so the naive
+        # ``dict(client.auth_test())`` raises ``ValueError: dictionary update
+        # sequence element #0 has length 1; 2 is required``. Use ``.data`` to
+        # get the raw dict the SDK already parsed from JSON.
+        return dict(client.auth_test().data)
     except SlackApiError as exc:
         raise RuntimeError(
             f"auth.test failed: {exc.response.get('error', 'unknown')}"
