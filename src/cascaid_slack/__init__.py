@@ -8,11 +8,19 @@ Public API:
     # Rolling pinned dashboard
     from cascaid_slack import PinKey, upsert_pinned_message
 
+    # Date-grouped event log
+    from cascaid_slack import send_slack_event, ensure_date_header
+
     # Storage protocols + ready-made implementations
-    from cascaid_slack import PinRecord, PinStateStorage
+    from cascaid_slack import (
+        PinRecord, PinStateStorage,
+        EventLogState, EventLogStorage,
+    )
     from cascaid_slack.storage import (
         JsonFilePinStateStorage,
         SqlAlchemyPinStateStorage,
+        JsonFileEventLogStorage,
+        SqlAlchemyEventLogStorage,
     )
 
 Anything else (the underscore-prefixed modules, internal helpers) is private
@@ -21,6 +29,7 @@ can promote it to the public API properly.
 """
 
 from ._state import EventLogState, EventLogStorage, PinRecord, PinStateStorage
+from .events import ensure_date_header, send_slack_event
 from .notifier import NotificationService
 from .pins import PinKey, upsert_pinned_message
 
@@ -31,6 +40,8 @@ __all__ = [
     "PinKey",
     "PinRecord",
     "PinStateStorage",
+    "ensure_date_header",
+    "send_slack_event",
     "upsert_pinned_message",
 ]
 

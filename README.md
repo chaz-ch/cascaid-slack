@@ -34,7 +34,15 @@ uv add --editable ../cascaid-slack
 ## Quick start
 
 ```python
-from cascaid_slack import NotificationService, PinKey, upsert_pinned_message
+from cascaid_slack import (
+    NotificationService,
+    PinKey, upsert_pinned_message,
+    send_slack_event,
+)
+from cascaid_slack.storage import (
+    JsonFilePinStateStorage,
+    JsonFileEventLogStorage,
+)
 
 # Plain text + file uploads
 notifier = NotificationService()  # reads SLACK_BOT_TOKEN + SLACK_CHANNEL_ID from env
@@ -42,32 +50,46 @@ notifier.send_slack("Job completed successfully")
 notifier.send_slack_file(content="row1\nrow2\n", filename="results.tsv")
 
 # Rolling pinned dashboard -- updates an existing message instead of posting new ones
+pin_storage = JsonFilePinStateStorage("./pins_state.json")
 my_pins = PinKey.namespace("weekly_metrics")
 upsert_pinned_message(
-    notifier,
-    my_storage,                 # implements the PinStateStorage Protocol
+    notifier, pin_storage,
     pin_key=my_pins("revenue"),
     text="```\nThis week: $12,345\n```",
 )
+
+# Date-grouped event log -- channel reads like a journal with date headers
+event_storage = JsonFileEventLogStorage("./events_state.json")
+send_slack_event(notifier, event_storage, text="Job completed: 71 navigator tasks")
+# -> Posts "*--- Tuesday, June 16, 2026 ---*" once per day, then your event under it
 ```
 
-## Storage protocol
+## Storage protocols
 
-`upsert_pinned_message` needs to remember "for pin_key X, the Slack ts is Y in
-channel Z, and last text hash was H." Implement the `PinStateStorage` Protocol
-however you like — Postgres, SQLite, Redis, even a JSON file for tiny scripts.
-The shape:
+The stateful helpers (rolling pins, date-grouped event logs) need to remember
+a little bit between calls. Two Protocols cover the two patterns:
 
 ```python
 class PinStateStorage(Protocol):
     def load_pin(self, pin_key: str) -> PinRecord | None: ...
     def save_pin(self, record: PinRecord) -> None: ...
     def delete_pin(self, pin_key: str) -> None: ...
+
+class EventLogStorage(Protocol):
+    def load_event_log(self, channel_id: str) -> EventLogState | None: ...
+    def save_event_log(self, state: EventLogState) -> None: ...
 ```
 
-Two ready-made implementations ship with the lib:
-- `SqlAlchemyPinStateStorage(engine)` — for projects using SQLAlchemy
-- `JsonFilePinStateStorage(path)` — for tiny scripts / one-offs
+Four ready-made implementations ship with the lib (in `cascaid_slack.storage`):
+
+| Class | When to use |
+|---|---|
+| `JsonFilePinStateStorage(path)` | Tiny scripts / one-offs. Single-process only. |
+| `JsonFileEventLogStorage(path)` | Same, for the event-log state. |
+| `SqlAlchemyPinStateStorage(engine)` | Production projects already using SQLAlchemy. |
+| `SqlAlchemyEventLogStorage(engine)` | Same, for the event-log state. |
+
+Implement the Protocol yourself for anything more exotic (Redis, DynamoDB, etc).
 
 ## Env vars
 
