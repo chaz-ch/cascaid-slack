@@ -1,0 +1,35 @@
+# Standard Python ignores
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.mypy_cache/
+
+# Envs
+.venv/
+venv/
+.env
+.envrc
+.direnv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# uv lockfile -- keep it so reproducible builds work
+# uv.lock         # actually, DO commit this
